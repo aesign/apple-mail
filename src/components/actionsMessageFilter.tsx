@@ -1,4 +1,4 @@
-import { Action, ActionPanel, Color, Icon } from "@raycast/api";
+import { Action, ActionPanel, Icon } from "@raycast/api";
 import { MessageFilters } from "../types";
 
 export const ActionsMessageFilter = (props: {

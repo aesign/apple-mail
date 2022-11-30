@@ -2,7 +2,7 @@
   "$schema": "https://www.raycast.com/schemas/extension.json",
   "name": "apple-mail",
   "title": "Apple Mail",
-  "description": "Browse recent emails inside",
+  "description": "Browse your mails effortlessy",
   "icon": "command-icon.png",
   "author": "aesign",
   "categories": [
@@ -16,7 +16,7 @@
       "name": "index",
       "title": "Inbox",
       "subtitle": "Mail",
-      "description": "Browse recent adresses",
+      "description": "Browse inbox emails",
       "mode": "view"
     },
     {

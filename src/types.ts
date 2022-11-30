@@ -1,6 +1,7 @@
 export interface Account {
   id: string;
   name: string;
+  mailboxes: string[];
 }
 
 export type MailboxNames = "inbox" | "sent" | "vip" | "junk" | "drafts";
@@ -13,6 +14,7 @@ export interface MessageFilters {
 export interface ListItem {
   messageFilters: MessageFilters;
   updateMessageFilter: (messageFilter: MessageFilters) => void;
+  isInConversation?: boolean;
   revalidate: () => Promise<MessageItem[]>;
 }
 

@@ -1,51 +1,27 @@
 import { List } from "@raycast/api";
 import { useSQL } from "@raycast/utils";
-import { MessageItem, ListItem } from "../types";
+import { MessageItem, ListItem, Account } from "../types";
 import { getMailDbPath } from "../utils/misc";
 import { MessageListItem } from "./messageListItem";
+import { conversationQuery } from "../utils/sqlQueries";
 
 interface Props extends ListItem {
   messages: MessageItem[];
+  mailboxes: string[];
+  accounts: Account[];
 }
 
 export const Conversation = (props: Props) => {
-  const mailsQuery = `SELECT
-	messages.ROWID,
-	addresses.address AS sender,
-	addresses. "comment",
-	messages.subject_prefix,
-	subjects.subject,
-	summaries.summary,
-	mailboxes.url,
-	messages.conversation_id,
-	messages.date_received,
-	messages.date_sent,
-	messages.display_date,
-	messages.mailbox,
-	messages. "read",
-	messages.flagged,
-	server_messages.flag_color,
-	message_global_data.follow_up_start_date,
-	message_global_data.follow_up_end_date,
-	messages.deleted,
-	messages.root_status
-FROM
-	messages
-	INNER JOIN summaries ON messages. summary = summaries. ROWID
-	INNER JOIN subjects ON messages. subject = subjects. ROWID
-	INNER JOIN addresses ON messages. sender = addresses.ROWID
-	INNER JOIN mailboxes ON messages.mailbox = mailboxes.ROWID
-  INNER JOIN server_messages ON messages.ROWID = server_messages.message
-  INNER JOIN message_global_data ON messages.message_id = message_global_data.message_id
-  WHERE messages.conversation_id = ${props.messages[0].conversation_id}
-    ORDER BY
-messages.display_date DESC
-    LIMIT 100
-  `;
+  const { isLoading, data, revalidate } = useSQL<MessageItem>(
+    getMailDbPath(),
+    conversationQuery({ conversation_id: props.messages[0].conversation_id, mailboxes: props.mailboxes })
+  );
 
-  const { isLoading, data, revalidate } = useSQL<MessageItem>(getMailDbPath(), mailsQuery);
 
-  const messages = data || props.messages;
+  // compare data and props.messages and return the objects that are in props.messages and in data
+  const filteredData = data?.filter((m) => props.messages.some((p) => p.ROWID === m.ROWID));
+
+  const messages = filteredData || props.messages;
 
   const revalidateBoth: () => Promise<MessageItem[]> = () => {
     props.revalidate();
@@ -60,13 +36,16 @@ messages.display_date DESC
   return (
     <List isLoading={isLoading} selectedItemId={messages[1].ROWID.toString()}>
       <List.Section title={messages[0].subject} subtitle={participantsString}>
-        {(data || messages || []).map((message, index) => (
+        {(messages || []).map((message, index) => (
           <MessageListItem
             key={index}
-            message={message}
+            message={[message]}
             revalidate={revalidateBoth}
             messageFilters={props.messageFilters}
             updateMessageFilter={props.updateMessageFilter}
+            mailboxes={props.mailboxes}
+            isInConversation={true}
+            accounts={props.accounts}
           />
         ))}
       </List.Section>

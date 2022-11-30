@@ -1,30 +1,55 @@
-import { Color, Icon, List, ActionPanel, Action, open } from "@raycast/api";
-import { MessageItem, ListItem } from "../types";
-import { getFlagColor, openInMail, showInMail } from "../utils/mail";
+import { Color, Icon, List, ActionPanel, Action } from "@raycast/api";
+import { MessageItem, ListItem, Account } from "../types";
+import { getFlagColor } from "../utils/mail";
 import { convertTime } from "../utils/misc";
 import { ActionsMessageActions } from "./actionsMessageActions";
+import { ActionsMessageCopy } from "./actionsMessageCopy";
 import { ActionsMessageFilter } from "./actionsMessageFilter";
+import { ActionsMessageMove } from "./actionsMessageMove";
+import { ActionsMessageOpen } from "./actionsMessageOpen";
+import { Conversation } from "./conversationList";
 
 interface Props extends ListItem {
-  message: MessageItem;
-} 
+  message: MessageItem[];
+  mailboxes: string[];
+  accounts: Account[];
+}
 
 export const MessageListItem = (props: Props) => {
-  const id = props.message.ROWID.toString();
-  const icon =
-    props.message.read === 1
-      ? { source: "/empty.png", tintColor: Color.SecondaryText }
-      : { source: Icon.Dot, tintColor: Color.Blue };
-  const title = props.message.comment || props.message.sender;
+  const propsMessage = props.message;
+  const isThread = () => propsMessage.length > 1;
+  const message = propsMessage[0];
+  const isRead = isThread() ? propsMessage.every((m) => m.read === 1) : propsMessage[0].read === 1;
+  const isFlagged = isThread() ? propsMessage.some((m) => m.flagged === 1) : propsMessage[0].flagged === 1;
+  const id = message.ROWID.toString();
+  const icon = isRead
+    ? { source: "/empty.png", tintColor: Color.SecondaryText }
+    : { source: Icon.Dot, tintColor: Color.Blue };
+  const title = propsMessage[0].comment || propsMessage[0].sender;
   const summmary =
-    props.message.summary.length > 60 ? props.message.summary.substring(0, 60) + "..." : props.message.summary;
+    propsMessage[0].summary.length > 60 ? propsMessage[0].summary.substring(0, 60) + "..." : message.summary;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const accessories: any[] = [];
 
-  props.message.flagged &&
-    accessories.push({ icon: { source: Icon.Tag, tintColor: getFlagColor(props.message.flag_color) } });
-  accessories.push({ text: convertTime(props.message.date_received) });
+  if (isFlagged) {
+    const flagColors = propsMessage.map((m) => (m.flagged === 1 ? m.flag_color : null));
+    const uniqueFlagColors = [...new Set(flagColors)];
+    uniqueFlagColors.forEach((color) => {
+      color !== null && accessories.push({ icon: { source: Icon.Tag, tintColor: getFlagColor(color) } });
+    });
+  }
+
+  isThread()
+    ? accessories.push(
+        {
+          icon: Icon.Envelope,
+          text: propsMessage.length.toString(),
+        },
+        {
+          text: convertTime(propsMessage[0].date_received),
+        }
+      )
+    : accessories.push({ text: convertTime(propsMessage[0].date_received) });
 
   return (
     <List.Item
@@ -33,51 +58,36 @@ export const MessageListItem = (props: Props) => {
       title={title}
       subtitle={summmary}
       accessories={accessories}
-      detail={
-        <List.Item.Detail
-          markdown={props.message.summary}
-          metadata={
-            <List.Item.Detail.Metadata>
-              <List.Item.Detail.Metadata.Label title="Types" />
-              <List.Item.Detail.Metadata.Label title="Grass" icon="pokemon_types/grass.svg" />
-              <List.Item.Detail.Metadata.Separator />
-              <List.Item.Detail.Metadata.Label title="Poison" icon="pokemon_types/poison.svg" />
-              <List.Item.Detail.Metadata.Separator />
-              <List.Item.Detail.Metadata.Label title="Chracteristics" />
-              <List.Item.Detail.Metadata.Label title="Height" text="70cm" />
-              <List.Item.Detail.Metadata.Separator />
-              <List.Item.Detail.Metadata.Label title="Weight" text="6.9 kg" />
-              <List.Item.Detail.Metadata.Separator />
-              <List.Item.Detail.Metadata.Label title="Abilities" />
-              <List.Item.Detail.Metadata.Label title="Chlorophyll" text="Main Series" />
-              <List.Item.Detail.Metadata.Separator />
-              <List.Item.Detail.Metadata.Label title="Overgrow" text="Main Series" />
-              <List.Item.Detail.Metadata.Separator />
-            </List.Item.Detail.Metadata>
-          }
-        />
-      }
       actions={
         <ActionPanel>
-          <Action
-            title="Open in Mail"
-            onAction={async () => {
-              console.log(props.message.ROWID, props.message.url);
-              const messageId = await openInMail(props.message.ROWID);
-              open(`message://%3c${messageId}%3e`);
-              props.revalidate();
-            }}
-          />
-          <Action
-            title="Show in Mail"
-            onAction={async () => {
-              console.log(props.message.ROWID, props.message.url);
-              await showInMail(props.message.ROWID);
-              props.revalidate();
-            }}
-          />
-          <ActionsMessageActions message={props.message} revalidate={props.revalidate} />
+          <ActionsMessageOpen messages={propsMessage} revalidate={props.revalidate} />
+          {isThread() && (
+            <>
+              <Action.Push
+                title={`Open Thread`}
+                shortcut={{ modifiers: ["cmd"], key: "arrowRight" }}
+                target={
+                  <Conversation
+                    messages={propsMessage}
+                    revalidate={props.revalidate}
+                    messageFilters={props.messageFilters}
+                    updateMessageFilter={props.updateMessageFilter}
+                    mailboxes={props.mailboxes}
+                    accounts={props.accounts}
+                  />
+                }
+              />
+            </>
+          )}
+          <ActionsMessageActions message={propsMessage} revalidate={props.revalidate} accounts={props.accounts} />
+          <ActionsMessageMove message={propsMessage} revalidate={props.revalidate} accounts={props.accounts} />
           <ActionsMessageFilter messageFilters={props.messageFilters} updateMessageFilter={props.updateMessageFilter} />
+          <ActionsMessageCopy messages={propsMessage} revalidate={props.revalidate} />
+          <Action
+            title="Refresh"
+            shortcut={{ modifiers: ["cmd", "shift"], key: "r" }}
+            onAction={() => props.revalidate()}
+          />
         </ActionPanel>
       }
     />
