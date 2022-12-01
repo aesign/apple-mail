@@ -26,7 +26,7 @@ export const ActionsMessageCopy = (props: { messages: MessageItem[]; revalidate:
       onAction={async () => {
         try {
           const messsageId = await getMessageId(props.messages[0].ROWID);
-          const html  = `<a href="message://%3c${messsageId}%3e">✉️ ${props.messages[0].subject}</a>`;
+          const html = `<a href="message://%3c${messsageId}%3e">✉️ ${props.messages[0].subject}</a>`;
           const fileContent: Clipboard.Content = { html };
           Clipboard.copy(fileContent);
           showHUD("Copied link to Clipboard");

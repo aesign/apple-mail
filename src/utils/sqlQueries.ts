@@ -30,8 +30,6 @@ const mailboxesSQLFilter = (mailboxes: string[]) =>
 //     : "";
 
 const messageViewSQLFilter = (messageFilter: MessageFilters) => {
-  // if only one option is enabled
-  // if no options are enabled return empty string
   if (messageFilter.options.filter((option) => option.enabled).length === 0 || !messageFilter.enabled) {
     return "";
   } else if (messageFilter.options.filter((option) => option.enabled).length === 1) {

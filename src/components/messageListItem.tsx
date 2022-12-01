@@ -40,7 +40,7 @@ export const MessageListItem = (props: Props) => {
     });
   }
 
-  isThread() ? console.log(props.messages[0].summary.slice(0,10),props.messages[0].display_date) : "";
+  isThread() ? console.log(props.messages[0].summary.slice(0, 10), props.messages[0].display_date) : "";
 
   isThread()
     ? accessories.push(
@@ -53,7 +53,7 @@ export const MessageListItem = (props: Props) => {
         }
       )
     : accessories.push({ text: convertTime(props.messages[0].display_date) });
-    
+
   return (
     <List.Item
       id={id}

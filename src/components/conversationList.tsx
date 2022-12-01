@@ -17,7 +17,6 @@ export const Conversation = (props: Props) => {
     conversationQuery({ conversation_id: props.messages[0].conversation_id, mailboxes: props.mailboxes })
   );
 
-
   // compare data and props.messages and return the objects that are in props.messages and in data
   const filteredData = data?.filter((m) => props.messages.some((p) => p.ROWID === m.ROWID));
 
