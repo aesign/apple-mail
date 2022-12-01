@@ -39,7 +39,7 @@ export const Conversation = (props: Props) => {
         {(messages || []).map((message, index) => (
           <MessageListItem
             key={index}
-            message={[message]}
+            messages={[message]}
             revalidate={revalidateBoth}
             messageFilters={props.messageFilters}
             updateMessageFilter={props.updateMessageFilter}

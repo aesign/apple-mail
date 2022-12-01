@@ -6,17 +6,15 @@ import { markAsRead, reply, forward, toggleFlag, getFlagColor, setFlag } from ".
 // todo: opmtimistic update of flags
 
 export const ActionsMessageActions = (props: {
-  message: MessageItem[] | MessageItem;
+  messages: MessageItem[];
   accounts: Account[];
   revalidate: () => Promise<MessageItem[]>;
   updateMessage?: (message: MessageItem[]) => void;
 }) => {
-  const message = Array.isArray(props.message) ? props.message[0] : props.message;
-  const isRead = Array.isArray(props.message) ? props.message.every((m) => m.read === 1) : props.message.read === 1;
-  const isFlagged = Array.isArray(props.message)
-    ? props.message.some((m) => m.flagged === 1)
-    : props.message.flagged === 1;
-  const messageIds = Array.isArray(props.message) ? props.message.map((m) => m.ROWID) : props.message.ROWID;
+  const firstMessage = Array.isArray(props.messages) ? props.messages[0] : props.messages;
+  const isRead = props.messages.every((m) => m.read === 1);
+  const isFlagged = props.messages.some((m) => m.flagged === 1);
+  const messageIds = props.messages.map((m) => m.ROWID);
   return (
     <>
       <ActionPanel.Section>
@@ -24,34 +22,50 @@ export const ActionsMessageActions = (props: {
           title={`Mark as ${isRead ? "Unread" : "Read"}`}
           shortcut={{ modifiers: ["cmd", "shift"], key: "u" }}
           onAction={async () => {
-            await markAsRead(messageIds, isRead ? false : true);
-            await props.revalidate();
+            try {
+              await markAsRead(messageIds, isRead ? false : true);
+              await props.revalidate();
+            } catch (e) {
+              showToast(
+                Toast.Style.Failure,
+                `Could not mark as ${isRead ? "unread" : "read"}`,
+                (e as ErrorEvent).message
+              );
+            }
           }}
         />
         <Action
           title={`Reply`}
           shortcut={{ modifiers: ["cmd"], key: "r" }}
           onAction={async () => {
-            console.log(message.ROWID, message.url);
-            await reply(message.ROWID, false);
-            await props.revalidate();
+            try {
+              console.log(firstMessage.ROWID, firstMessage.url);
+              await reply(firstMessage.ROWID, false);
+              await props.revalidate();
+            } catch (e) {
+              showToast(Toast.Style.Failure, "Could not reply", (e as ErrorEvent).message);
+            }
           }}
         />
         <Action
           title={`Reply to all`}
           shortcut={{ modifiers: ["shift", "cmd"], key: "r" }}
           onAction={async () => {
-            console.log(message.ROWID, message.url);
-            await reply(message.ROWID, true);
-            await props.revalidate();
+            try {
+              console.log(firstMessage.ROWID, firstMessage.url);
+              await reply(firstMessage.ROWID, true);
+              await props.revalidate();
+            } catch (e) {
+              showToast(Toast.Style.Failure, "Could not reply to all", (e as ErrorEvent).message);
+            }
           }}
         />
         <Action
           title={`Forward`}
           shortcut={{ modifiers: ["shift", "cmd"], key: "f" }}
           onAction={async () => {
-            console.log(message.ROWID, message.url);
-            await forward(message.ROWID);
+            console.log(firstMessage.ROWID, firstMessage.url);
+            await forward(firstMessage.ROWID);
             await props.revalidate();
           }}
         />
@@ -66,32 +80,34 @@ export const ActionsMessageActions = (props: {
               onAction={async () => {
                 const toast = await showToast({
                   style: Toast.Style.Animated,
-                  title: "Flagging...",
+                  title: "Setting flag...",
                 });
-                await setFlag(messageIds, flag.index);
 
-                const dateStarted = Date.now();
+                try {
+                  await setFlag(messageIds, flag.index);
 
-                let data = (await props.revalidate()).filter((m) =>
-                  Array.isArray(messageIds) ? messageIds.includes(m.ROWID) : m.ROWID === messageIds
-                );
+                  const dateStarted = Date.now();
 
-                while (data.some((m) => m.flag_color !== flag.index)) {
-                  console.log("waiting for flag to be set");
-                  data = (await props.revalidate()).filter((m) =>
-                    Array.isArray(messageIds) ? messageIds.includes(m.ROWID) : m.ROWID === messageIds
-                  );
-                  await props.revalidate();
-                  if (Date.now() - dateStarted > 4000) {
-                    console.log((Date.now() - dateStarted) / 1000);
-                    toast.style = Toast.Style.Failure;
-                    toast.title = "Could not check if message was deleted";
-                    break;
+                  let data = (await props.revalidate()).filter((m) => messageIds.includes(m.ROWID));
+
+                  while (data.some((m) => m.flag_color !== flag.index)) {
+                    console.log("waiting for flag to be set");
+                    data = (await props.revalidate()).filter((m) => messageIds.includes(m.ROWID));
+                    await props.revalidate();
+                    if (Date.now() - dateStarted > 4000) {
+                      console.log((Date.now() - dateStarted) / 1000);
+                      toast.style = Toast.Style.Failure;
+                      toast.title = "Could not check if message was deleted";
+                      break;
+                    }
                   }
+                  toast.style = Toast.Style.Success;
+                  toast.title = `Flagged ${messageIds.length > 1 ? messageIds.length + " messages" : "message"}`;
+                } catch (e) {
+                  toast.style = Toast.Style.Failure;
+                  toast.title = "Could not set flag";
+                  toast.message = (e as ErrorEvent).message;
                 }
-                const count = Array.isArray(messageIds) ? messageIds.length : 1;
-                toast.style = Toast.Style.Success;
-                toast.title = `Flagged ${count > 1 ? count + " messages" : "message"}`;
               }}
             />
           ))}
@@ -99,9 +115,13 @@ export const ActionsMessageActions = (props: {
             title={`Toggle Flag`}
             shortcut={{ modifiers: ["cmd", "shift"], key: "l" }}
             onAction={async () => {
-              console.log(message.ROWID, message.url);
-              await toggleFlag(messageIds, isFlagged ? false : true);
-              await props.revalidate();
+              try {
+                console.log(firstMessage.ROWID, firstMessage.url);
+                await toggleFlag(messageIds, isFlagged ? false : true);
+                await props.revalidate();
+              } catch (e) {
+                showToast(Toast.Style.Failure, "Could not toggle flag", (e as ErrorEvent).message);
+              }
             }}
           />
         </ActionPanel.Submenu>
@@ -109,17 +129,25 @@ export const ActionsMessageActions = (props: {
           title={`Toggle Flag`}
           shortcut={{ modifiers: ["cmd", "shift"], key: "l" }}
           onAction={async () => {
-            console.log(message.ROWID, message.url);
-            await toggleFlag(messageIds, isFlagged ? false : true);
-            await props.revalidate();
+            try {
+              console.log(firstMessage.ROWID, firstMessage.url);
+              await toggleFlag(messageIds, isFlagged ? false : true);
+              await props.revalidate();
+            } catch (e) {
+              showToast(Toast.Style.Failure, "Could not toggle flag", (e as ErrorEvent).message);
+            }
           }}
         />
         <Action
           title={`Clear Flag`}
           onAction={async () => {
-            console.log(message.ROWID, message.url);
-            await toggleFlag(messageIds, false);
-            await props.revalidate();
+            try {
+              console.log(firstMessage.ROWID, firstMessage.url);
+              await toggleFlag(messageIds, false);
+              await props.revalidate();
+            } catch (e) {
+              showToast(Toast.Style.Failure, "Could not clear flag", (e as ErrorEvent).message);
+            }
           }}
         />
       </ActionPanel.Section>

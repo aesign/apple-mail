@@ -3,13 +3,13 @@ import { Account, MessageItem } from "../types";
 import { copyMail, deleteMail, moveMail } from "../utils/mail";
 
 export const ActionsMessageMove = (props: {
-  message: MessageItem[] | MessageItem;
+  messages: MessageItem[];
   accounts: Account[];
   revalidate: () => Promise<MessageItem[]>;
 }) => {
-  const message = Array.isArray(props.message) ? props.message[0] : props.message;
-  const selectedAccountId = message.url.split("/")[2];
-  const messageIds = Array.isArray(props.message) ? props.message.map((m) => m.ROWID) : props.message.ROWID;
+  const firstMessage = props.messages[0];
+  const selectedAccountId = firstMessage.url.split("/")[2];
+  const messageIds = props.messages.map((m) => m.ROWID);
   return (
     <ActionPanel.Section>
       <ActionPanel.Submenu title="Move to">
@@ -20,8 +20,16 @@ export const ActionsMessageMove = (props: {
               key={index}
               title={mailbox}
               onAction={async () => {
+                const toast = await showToast({
+                  style: Toast.Style.Animated,
+                  title: "Moving...",
+                });
                 await moveMail(messageIds, mailbox);
                 props.revalidate();
+                toast.title = `Moved ${
+                  messageIds.length > 1 ? messageIds.length + " messages" : "message"
+                } to ${mailbox}`;
+                toast.style = Toast.Style.Success;
               }}
             />
           ))}
@@ -34,49 +42,55 @@ export const ActionsMessageMove = (props: {
               key={index}
               title={mailbox}
               onAction={async () => {
+                const toast = await showToast({
+                  style: Toast.Style.Animated,
+                  title: "Copying...",
+                });
                 await copyMail(messageIds, mailbox);
                 props.revalidate();
+                toast.title = `Copied ${
+                  messageIds.length > 1 ? messageIds.length + " messages" : "message"
+                } to ${mailbox}`;
+                toast.style = Toast.Style.Success;
               }}
             />
           ))}
       </ActionPanel.Submenu>
-      <Action
-        icon={Icon.Trash}
-        title="Delete"
-        style={Action.Style.Destructive}
-        onAction={async () => {
-          const toast = await showToast({
-            style: Toast.Style.Animated,
-            title: "Deleting...",
-          });
-          console.log(Array.isArray(messageIds));
-          await deleteMail(messageIds);
 
-          let data = (await props.revalidate()).filter((m) =>
-            Array.isArray(messageIds) ? messageIds.includes(m.ROWID) : m.ROWID === messageIds
-          );
-          const dateStarted = Date.now();
+      {/* currently, the delete actions doesn't work for conversations */}
 
-          while (data.length > 0) {
-            console.log("deleting", data.length);
-            data = (await props.revalidate()).filter((m) =>
-              Array.isArray(messageIds) ? messageIds.includes(m.ROWID) : m.ROWID === messageIds
-            );
-            await props.revalidate();
+      {props.messages.length === 1 ? (
+        <Action
+          icon={Icon.Trash}
+          title="Delete"
+          style={Action.Style.Destructive}
+          onAction={async () => {
+            const toast = await showToast({
+              style: Toast.Style.Animated,
+              title: "Deleting...",
+            });
+            await deleteMail(messageIds);
 
-            if (Date.now() - dateStarted > 4000) {
-              console.log((Date.now() - dateStarted) / 1000);
-              toast.style = Toast.Style.Failure;
-              toast.title = "Could not check if message was deleted";
-              break;
+            let data = (await props.revalidate()).filter((m) => messageIds.includes(m.ROWID));
+            const dateStarted = Date.now();
+
+            while (data.length > 0) {
+              data = (await props.revalidate()).filter((m) => messageIds.includes(m.ROWID));
+              await props.revalidate();
+
+              if (Date.now() - dateStarted > 4000) {
+                console.log((Date.now() - dateStarted) / 1000);
+                toast.style = Toast.Style.Failure;
+                toast.title = "Could not check if message was deleted";
+                break;
+              }
             }
-          }
-          await props.revalidate();
-          const count = Array.isArray(messageIds) ? messageIds.length : 1;
-          toast.style = Toast.Style.Success;
-          toast.title = `Deleted ${count > 1 ? count + " messages" : "message"}`;
-        }}
-      />
+            await props.revalidate();
+            toast.style = Toast.Style.Success;
+            toast.title = `Deleted ${messageIds.length > 1 ? messageIds.length + " messages" : "message"}`;
+          }}
+        />
+      ) : null}
     </ActionPanel.Section>
   );
 };

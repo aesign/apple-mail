@@ -10,47 +10,50 @@ import { ActionsMessageOpen } from "./actionsMessageOpen";
 import { Conversation } from "./conversationList";
 
 interface Props extends ListItem {
-  message: MessageItem[];
+  messages: MessageItem[];
   mailboxes: string[];
   accounts: Account[];
 }
 
 export const MessageListItem = (props: Props) => {
-  const propsMessage = props.message;
-  const isThread = () => propsMessage.length > 1;
-  const message = propsMessage[0];
-  const isRead = isThread() ? propsMessage.every((m) => m.read === 1) : propsMessage[0].read === 1;
-  const isFlagged = isThread() ? propsMessage.some((m) => m.flagged === 1) : propsMessage[0].flagged === 1;
-  const id = message.ROWID.toString();
+  const isThread = () => props.messages.length > 1;
+
+  const isRead = props.messages.every((m) => m.read === 1);
+  const isFlagged = props.messages.some((m) => m.flagged === 1);
+  const id = props.messages[0].ROWID.toString();
   const icon = isRead
     ? { source: "/empty.png", tintColor: Color.SecondaryText }
     : { source: Icon.Dot, tintColor: Color.Blue };
-  const title = propsMessage[0].comment || propsMessage[0].sender;
+  const title = props.messages[0].comment || props.messages[0].sender;
   const summmary =
-    propsMessage[0].summary.length > 60 ? propsMessage[0].summary.substring(0, 60) + "..." : message.summary;
+    props.messages[0].summary.length > 60
+      ? props.messages[0].summary.substring(0, 60) + "..."
+      : props.messages[0].summary;
 
   const accessories: any[] = [];
 
   if (isFlagged) {
-    const flagColors = propsMessage.map((m) => (m.flagged === 1 ? m.flag_color : null));
+    const flagColors = props.messages.map((m) => (m.flagged === 1 ? m.flag_color : null));
     const uniqueFlagColors = [...new Set(flagColors)];
     uniqueFlagColors.forEach((color) => {
       color !== null && accessories.push({ icon: { source: Icon.Tag, tintColor: getFlagColor(color) } });
     });
   }
 
+  isThread() ? console.log(props.messages[0].summary.slice(0,10),props.messages[0].display_date) : "";
+
   isThread()
     ? accessories.push(
         {
           icon: Icon.Envelope,
-          text: propsMessage.length.toString(),
+          text: props.messages.length.toString(),
         },
         {
-          text: convertTime(propsMessage[0].date_received),
+          text: convertTime(props.messages[0].display_date),
         }
       )
-    : accessories.push({ text: convertTime(propsMessage[0].date_received) });
-
+    : accessories.push({ text: convertTime(props.messages[0].display_date) });
+    
   return (
     <List.Item
       id={id}
@@ -60,7 +63,7 @@ export const MessageListItem = (props: Props) => {
       accessories={accessories}
       actions={
         <ActionPanel>
-          <ActionsMessageOpen messages={propsMessage} revalidate={props.revalidate} />
+          <ActionsMessageOpen messages={props.messages} revalidate={props.revalidate} />
           {isThread() && (
             <>
               <Action.Push
@@ -68,7 +71,7 @@ export const MessageListItem = (props: Props) => {
                 shortcut={{ modifiers: ["cmd"], key: "arrowRight" }}
                 target={
                   <Conversation
-                    messages={propsMessage}
+                    messages={props.messages}
                     revalidate={props.revalidate}
                     messageFilters={props.messageFilters}
                     updateMessageFilter={props.updateMessageFilter}
@@ -79,10 +82,10 @@ export const MessageListItem = (props: Props) => {
               />
             </>
           )}
-          <ActionsMessageActions message={propsMessage} revalidate={props.revalidate} accounts={props.accounts} />
-          <ActionsMessageMove message={propsMessage} revalidate={props.revalidate} accounts={props.accounts} />
+          <ActionsMessageActions messages={props.messages} revalidate={props.revalidate} accounts={props.accounts} />
+          <ActionsMessageMove messages={props.messages} revalidate={props.revalidate} accounts={props.accounts} />
           <ActionsMessageFilter messageFilters={props.messageFilters} updateMessageFilter={props.updateMessageFilter} />
-          <ActionsMessageCopy messages={propsMessage} revalidate={props.revalidate} />
+          <ActionsMessageCopy messages={props.messages} revalidate={props.revalidate} />
           <Action
             title="Refresh"
             shortcut={{ modifiers: ["cmd", "shift"], key: "r" }}

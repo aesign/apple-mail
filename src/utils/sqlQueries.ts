@@ -35,13 +35,13 @@ const messageViewSQLFilter = (messageFilter: MessageFilters) => {
   if (messageFilter.options.filter((option) => option.enabled).length === 0 || !messageFilter.enabled) {
     return "";
   } else if (messageFilter.options.filter((option) => option.enabled).length === 1) {
-    const filter = messageFilter.options.find((option) => option.enabled);
+    const filter = messageFilter.options[0];
     return `
       AND conversation_id IN(
         SELECT
           conversation_id FROM messages
         WHERE
-          ${filter?.dbKey} = ${filter?.defaultFilterValue}
+          ${filter.dbKey} = ${filter.defaultFilterValue}
         GROUP BY
           conversation_id)`;
   } else {
@@ -105,7 +105,7 @@ INNER JOIN message_global_data ON messages.message_id = message_global_data.mess
 
   ORDER BY
 messages.display_date DESC
-  LIMIT 40
+  LIMIT 200
 `;
 
 interface conversationQueryOptions {

@@ -48,33 +48,21 @@ export const openInMail = async (id: number): Promise<string> => {
   }
 };
 
-export const moveMail = async (id: number | number[], mailboxName: string): Promise<string> => {
+export const moveMail = async (id: number[], mailboxName: string): Promise<string> => {
   try {
     const result = await run(
       ({ id, mailboxName }) => {
         const mail = Application("Mail");
-        const newId = id as number | number[];
-        if (Array.isArray(newId)) {
-          newId.map((idMap) => {
-            console.log(id);
-            const message = mail
-              .inbox()
-              .messages()
-              .find((message: Mail.Message) => message.id() === idMap);
-            const account = message.mailbox().account();
-            const mailbox = account.mailboxes().find((mailbox: Mail.Mailbox) => mailbox.name() === mailboxName);
-            return mail.move(message, { to: mailbox });
-          });
-        } else {
-          console.log("not array");
+        id.map((idMap: number) => {
+          console.log(id);
           const message = mail
             .inbox()
             .messages()
-            .find((message: Mail.Message) => message.id() === id);
+            .find((message: Mail.Message) => message.id() === idMap);
           const account = message.mailbox().account();
           const mailbox = account.mailboxes().find((mailbox: Mail.Mailbox) => mailbox.name() === mailboxName);
           return mail.move(message, { to: mailbox });
-        }
+        });
       },
       { id, mailboxName }
     );
@@ -86,30 +74,19 @@ export const moveMail = async (id: number | number[], mailboxName: string): Prom
 
 // todo: fix deleting multiple messages
 
-export const deleteMail = async (id: number | number[]) => {
+export const deleteMail = async (id: number[]) => {
   try {
     await run(
       ({ id }) => {
         const mail = Application("Mail");
-        const newId = id as number | number[];
-        if (Array.isArray(newId)) {
-          console.log("array");
-          newId.map(async (idMap) => {
-            const message = mail
-              .inbox()
-              .messages()
-              .find((message: Mail.Message) => message.id() === idMap);
-            mail.delete(message);
-          });
-        } else {
-          console.log("not array");
+        console.log("array");
+        id.forEach((idMap: number) => {
           const message = mail
             .inbox()
             .messages()
-            .find((message: Mail.Message) => message.id() === id);
-          console.log(message.id());
-          mail.delete(message);
-        }
+            .find((message: Mail.Message) => message.id() === idMap);
+          return mail.delete(message);
+        });
       },
       { id }
     );
@@ -118,52 +95,21 @@ export const deleteMail = async (id: number | number[]) => {
   }
 };
 
-export const deleteMailSingle = async (id: number) => {
-  try {
-    await run(
-      ({ id }) => {
-        const mail = Application("Mail");
-        const message = mail
-          .inbox()
-          .messages()
-          .find((message: Mail.Message) => message.id() === id);
-        console.log(message.id());
-        mail.delete(message);
-      },
-      { id }
-    );
-  } catch (e) {
-    throw new Error((e as Error).message);
-  }
-};
-
-export const copyMail = async (id: number | number[], mailboxName: string): Promise<string> => {
+export const copyMail = async (id: number[], mailboxName: string): Promise<string> => {
   try {
     const result = await run(
       ({ id, mailboxName }) => {
         const mail = Application("Mail");
-        const newId = id as number | number[];
-        if (Array.isArray(newId)) {
-          newId.map((idMap) => {
-            console.log(id);
-            const message = mail
-              .inbox()
-              .messages()
-              .find((message: Mail.Message) => message.id() === idMap);
-            const account = message.mailbox().account();
-            const mailbox = account.mailboxes().find((mailbox: Mail.Mailbox) => mailbox.name() === mailboxName);
-            return mail.duplicate(message, { to: mailbox });
-          });
-        } else {
-          console.log("not array");
+        id.map((idMap: number) => {
+          console.log(id);
           const message = mail
             .inbox()
             .messages()
-            .find((message: Mail.Message) => message.id() === id);
+            .find((message: Mail.Message) => message.id() === idMap);
           const account = message.mailbox().account();
           const mailbox = account.mailboxes().find((mailbox: Mail.Mailbox) => mailbox.name() === mailboxName);
           return mail.duplicate(message, { to: mailbox });
-        }
+        });
       },
       { id, mailboxName }
     );
@@ -193,29 +139,18 @@ export const showInMail = async (id: number): Promise<string> =>
     { id }
   );
 
-export const markAsRead = async (id: number | number[], read: boolean) => {
+export const markAsRead = async (id: number[], read: boolean) => {
   try {
     await run(
       ({ id, read }) => {
         const mail = Application("Mail");
-        const newId = id as number | number[];
-        if (Array.isArray(newId)) {
-          newId.map((idMap) => {
-            console.log(id);
-            const message = mail
-              .inbox()
-              .messages()
-              .find((message: Mail.Message) => message.id() === idMap);
-            message.readStatus = read;
-          });
-        } else {
-          console.log("not array");
+        id.map((idMap: number) => {
           const message = mail
             .inbox()
             .messages()
-            .find((message: Mail.Message) => message.id() === id);
+            .find((message: Mail.Message) => message.id() === idMap);
           message.readStatus = read;
-        }
+        });
       },
       { id, read }
     );
@@ -224,29 +159,19 @@ export const markAsRead = async (id: number | number[], read: boolean) => {
   }
 };
 
-export const toggleFlag = async (id: number | number[], flag: boolean): Promise<boolean> => {
+export const toggleFlag = async (id: number[], flag: boolean): Promise<boolean> => {
   try {
     const result = await run(
       ({ id, flag }) => {
         const mail = Application("Mail");
-        const newId = id as number | number[];
-        if (Array.isArray(newId)) {
-          newId.map((idMap) => {
-            console.log(id);
-            const message = mail
-              .inbox()
-              .messages()
-              .find((message: Mail.Message) => message.id() === idMap);
-            message.flaggedStatus = flag;
-          });
-        } else {
-          console.log("not array");
+        id.map((idMap: number) => {
+          console.log(id);
           const message = mail
             .inbox()
             .messages()
-            .find((message: Mail.Message) => message.id() === id);
+            .find((message: Mail.Message) => message.id() === idMap);
           message.flaggedStatus = flag;
-        }
+        });
       },
       { id, flag }
     );
@@ -257,29 +182,19 @@ export const toggleFlag = async (id: number | number[], flag: boolean): Promise<
 };
 
 // doesnt work
-export const setFlag = async (id: number | number[], flagIndex: number): Promise<number> => {
+export const setFlag = async (id: number[], flagIndex: number): Promise<number> => {
   try {
     const result = await run(
       ({ id, flagIndex }) => {
         const mail = Application("Mail");
-        const newId = id as number | number[];
-        if (Array.isArray(newId)) {
-          newId.map((idMap) => {
-            console.log(id);
-            const message = mail
-              .inbox()
-              .messages()
-              .find((message: Mail.Message) => message.id() === idMap);
-            message.flagIndex = flagIndex;
-          });
-        } else {
-          console.log("not array");
+        id.map((idMap: number) => {
+          console.log(id);
           const message = mail
             .inbox()
             .messages()
-            .find((message: Mail.Message) => message.id() === id);
+            .find((message: Mail.Message) => message.id() === idMap);
           message.flagIndex = flagIndex;
-        }
+        });
       },
       { id, flagIndex }
     );

@@ -1,4 +1,4 @@
-import { List, Icon, ActionPanel, showToast, Toast } from "@raycast/api";
+import { ActionPanel, Clipboard, Icon, List, showToast, Toast } from "@raycast/api";
 import { useCachedState, useSQL } from "@raycast/utils";
 import _ from "lodash";
 import { useEffect } from "react";
@@ -11,8 +11,6 @@ import { MessageListItem } from "./messageListItem";
 
 export const Mailbox = (props: { name: MailboxNames }) => {
   const [accounts, setAccounts] = useCachedState<Account[]>("enabled-accounts", []);
-  // const [isShowingDetail, setShowingDetail] = useCachedState<boolean>("is-showing-detail", false);
-  // const [mailboxUnreadCount, setMailboxUnreadCount] = useCachedState<number>("mailbox-unread-count", 0);
   const [mailboxName, setMailboxName] = useCachedState<string>("mailbox-name", "Inbox");
   const [mailboxes, setMailboxes] = useCachedState<string[]>("mailboxes", []);
   const [cachedData, setCachedData] = useCachedState<MessageItem[]>("data", []);
@@ -21,7 +19,7 @@ export const Mailbox = (props: { name: MailboxNames }) => {
   const [messageFilters, setMessageFilters] = useCachedState<string>(
     "message-filters",
     JSON.stringify({
-      enabled: true,
+      enabled: false,
       options: [
         { name: "Unread", dbKey: "read", defaultFilterValue: 0, enabled: true },
         { name: "Flagged", dbKey: "flagged", defaultFilterValue: 1, enabled: false },
@@ -29,8 +27,12 @@ export const Mailbox = (props: { name: MailboxNames }) => {
     })
   );
 
+  // const [isShowingDetail, setShowingDetail] = useCachedState<boolean>("is-showing-detail", false);
+  // const [mailboxUnreadCount, setMailboxUnreadCount] = useCachedState<number>("mailbox-unread-count", 0);
+
   const parsedMessageFilters = JSON.parse(messageFilters) as MessageFilters;
 
+  // workaround for gmail accounts having same "Al Mail" mailbox both for inbox and archive
   const filterData = (data: MessageItem[]) => data?.filter((m) => mailboxMessageIds.some((p) => p === m.ROWID));
 
   const { isLoading, data, revalidate } = useSQL<MessageItem>(
@@ -50,16 +52,13 @@ export const Mailbox = (props: { name: MailboxNames }) => {
   );
 
   const updateMessageFilters = (messageFilter: MessageFilters) => {
-    // function to check if all messageFilters are disabled
-    const allMessageFiltersDisabled = () => {
-      return messageFilter.options.every((option) => !option.enabled);
-    };
+    // const allMessageFiltersDisabled = () => {
+    //   return messageFilter.options.every((option) => !option.enabled);
+    // };
 
-    const anyMessageFiltersEnabled = () => {
-      return messageFilter.options.some((option) => option.enabled);
-    };
-
-    console.log(messageFilter.enabled);
+    // const anyMessageFiltersEnabled = () => {
+    //   return messageFilter.options.some((option) => option.enabled);
+    // };
 
     // if (allMessageFiltersDisabled() && messageFilter.enabled) {
     //   messageFilter.enabled = false;
@@ -73,7 +72,6 @@ export const Mailbox = (props: { name: MailboxNames }) => {
     //   messageFilter.options[0].enabled = true;
     // }
 
-    console.log("allMessageFiltersDisabled", allMessageFiltersDisabled());
     // if (!messageFilter.enabled && Object.values(messageFilter.options).some((option) => option)) {
     //   messageFilter.enabled = true;
     // }
@@ -81,23 +79,54 @@ export const Mailbox = (props: { name: MailboxNames }) => {
     getEnabledFilters();
   };
 
+  Clipboard.copy(
+    mailboxQuery({
+      mailboxes: mailboxes,
+      accounts: accounts,
+      selectedAccount: selectedAccount,
+      mailboxMessageIds: mailboxMessageIds,
+      messageFilter: parsedMessageFilters,
+    })
+  );
+
   useEffect(() => {
     const setup = async () => {
+      const errors = [];
       try {
         const accounts = await getAccounts();
-        console.log("accounts", accounts);
+        setAccounts(accounts);
+      } catch (e) {
+        errors.push({ title: "accounts", detail: (e as ErrorEvent).message });
+      }
+
+      try {
         const mailboxes = await getMailboxes(props.name);
+        setMailboxes(mailboxes);
+      } catch (e) {
+        errors.push({ title: "mailboxes", detail: (e as ErrorEvent).message });
+      }
+      try {
         const mailboxMessageIds = await getMailboxMessageIds(props.name);
-        // const mailboxUnreadCount = await getMailboxUnreadCount(props.name);
+        setMailboxMessageIds(mailboxMessageIds);
+      } catch (e) {
+        errors.push({ title: "message ids", detail: (e as ErrorEvent).message });
+      }
+      try {
         const mailboxName = await getMailboxName(props.name);
         setMailboxName(mailboxName);
-        setAccounts(accounts);
-        setMailboxes(mailboxes);
-        setMailboxMessageIds(mailboxMessageIds);
-        // setMailboxUnreadCount(mailboxUnreadCount);
       } catch (e) {
-        showToast(Toast.Style.Failure, "Error!", (e as Error).message);
+        errors.push({ title: "mailbox name", detail: (e as ErrorEvent).message });
       }
+
+      if (errors.length > 0) {
+        showToast(
+          Toast.Style.Failure,
+          `Failed to fetch ${errors.map((e) => e.title).join(", ")}`,
+          errors.map((e) => e.detail).join(", ")
+        );
+      }
+      // const mailboxUnreadCount = await getMailboxUnreadCount(props.name);
+      // setMailboxUnreadCount(mailboxUnreadCount);
     };
     setup();
   }, []);
@@ -120,7 +149,7 @@ export const Mailbox = (props: { name: MailboxNames }) => {
   const AccountsDropdown = () => (
     <List.Dropdown onChange={setSelectedAccount} value={selectedAccount} tooltip="Select account">
       <List.Dropdown.Section>
-        <List.Dropdown.Item icon={Icon.Envelope} title={mailboxName} value="all" />
+        <List.Dropdown.Item icon={Icon.Envelope} title={"All Accounts"} value="all" />
       </List.Dropdown.Section>
       {(accounts || []).map((account) => (
         <List.Dropdown.Item key={account.id} icon={Icon.Tray} title={account.name} value={account.id} />
@@ -160,7 +189,7 @@ export const Mailbox = (props: { name: MailboxNames }) => {
           return (
             <MessageListItem
               key={key}
-              message={conversation}
+              messages={conversation}
               messageFilters={parsedMessageFilters}
               updateMessageFilter={updateMessageFilters}
               revalidate={revalidate}
